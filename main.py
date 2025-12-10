@@ -7,8 +7,8 @@ import discord
 TOKEN = os.environ.get("DISCORD_TOKEN")
 CHANNEL_ID = int(os.environ.get("CHANNEL_ID"))
 
-intents = discord.Intents.default()
-intents.message_content = True  # برای ارسال و خواندن پیام‌ها
+intents = discord.Intents.default()  # فقط default
+# intents.message_content = True  <-- این خط حذف شد
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
