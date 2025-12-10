@@ -1,30 +1,29 @@
+import os
 import asyncio
 from datetime import datetime, timezone
 from discord.ext import commands, tasks
 import discord
 
-TOKEN = "DISCORD_TOKEN_HERE"  # توکن بات
-CHANNEL_ID = 123456789012345678  # آیدی چنل دیسکورد
+TOKEN = os.environ.get("DISCORD_TOKEN")       # خونده میشه از Environment Variable
+CHANNEL_ID = int(os.environ.get("CHANNEL_ID"))  # آیدی چنل هم از Env Variable
 
 bot = commands.Bot(command_prefix="!")
 
-# آخرین Eruption
 last_eruption = datetime.now(timezone.utc)
 
 def get_farm_status(minutes_passed):
-    """بازدهی فارم و رنگ Embed بر اساس زمان گذشته"""
     if minutes_passed < 15:
-        return "زمان مناسب فارم ارتفیکت 🟡", 0xffd700  # زرد
+        return "زمان مناسب فارم ارتفیکت 🟡", 0xffd700
     elif 15 <= minutes_passed <= 30:
-        return "شانس فارم خوب ✅", 0x00ff00  # سبز
+        return "شانس فارم خوب ✅", 0x00ff00
     else:
-        return "زمان کمتر مناسب است ⚠️", 0xff0000  # قرمز
+        return "زمان کمتر مناسب است ⚠️", 0xff0000
 
 @tasks.loop(minutes=1)
 async def simulate_eruption():
     global last_eruption
     now = datetime.now(timezone.utc)
-    delta = (now - last_eruption).total_seconds() / 60  # دقیقه
+    delta = (now - last_eruption).total_seconds() / 60
     status_text, color = get_farm_status(delta)
 
     channel = bot.get_channel(CHANNEL_ID)
