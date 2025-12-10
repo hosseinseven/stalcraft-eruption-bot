@@ -4,10 +4,13 @@ from datetime import datetime, timezone
 from discord.ext import commands, tasks
 import discord
 
-TOKEN = os.environ.get("DISCORD_TOKEN")       # خونده میشه از Environment Variable
-CHANNEL_ID = int(os.environ.get("CHANNEL_ID"))  # آیدی چنل هم از Env Variable
+TOKEN = os.environ.get("DISCORD_TOKEN")
+CHANNEL_ID = int(os.environ.get("CHANNEL_ID"))
 
-bot = commands.Bot(command_prefix="!")
+intents = discord.Intents.default()
+intents.message_content = True  # برای ارسال و خواندن پیام‌ها
+
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 last_eruption = datetime.now(timezone.utc)
 
