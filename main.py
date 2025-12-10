@@ -1,74 +1,61 @@
-import discord
-from discord.ext import tasks
 import asyncio
-from datetime import datetime, timedelta
-import os
+from datetime import datetime, timezone
+from discord.ext import commands, tasks
+import discord
 
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+TOKEN = "DISCORD_TOKEN_HERE"  # توکن بات
+CHANNEL_ID = 123456789012345678  # آیدی چنل دیسکورد
 
-intents = discord.Intents.default()
-intents.message_content = True
-bot = discord.Client(intents=intents)
+bot = commands.Bot(command_prefix="!")
 
-# شبیه‌سازی آخرین Eruption
-last_eruption = datetime.utcnow()  
-eruption_interval = timedelta(hours=3)
+# آخرین Eruption
+last_eruption = datetime.now(timezone.utc)
 
-status_messages = [
-    (15, "بهترین زمان فارم Artifact 🔥"),
-    (30, "شانس خوب 🎯"),
-    (90, "شانس متوسط ⏳"),
-]
+def get_farm_status(minutes_passed):
+    """بازدهی فارم و رنگ Embed بر اساس زمان گذشته"""
+    if minutes_passed < 15:
+        return "زمان مناسب فارم ارتفیکت 🟡", 0xffd700  # زرد
+    elif 15 <= minutes_passed <= 30:
+        return "شانس فارم خوب ✅", 0x00ff00  # سبز
+    else:
+        return "زمان کمتر مناسب است ⚠️", 0xff0000  # قرمز
 
-message_obj = None
+@tasks.loop(minutes=1)
+async def simulate_eruption():
+    global last_eruption
+    now = datetime.now(timezone.utc)
+    delta = (now - last_eruption).total_seconds() / 60  # دقیقه
+    status_text, color = get_farm_status(delta)
 
-def get_status(minutes_passed):
-    for limit, text in status_messages:
-        if minutes_passed <= limit:
-            return text
-    return "اسپاون تقریباً متوقف شد – منتظر Eruption بعدی ⏱️"
+    channel = bot.get_channel(CHANNEL_ID)
+    if not channel:
+        channel = await bot.fetch_channel(CHANNEL_ID)
+
+    embed = discord.Embed(
+        title="⏱️ تایمر Eruption",
+        description=status_text,
+        color=color
+    )
+    embed.add_field(
+        name="آخرین Eruption",
+        value=last_eruption.strftime('%Y-%m-%d %H:%M:%S UTC'),
+        inline=False
+    )
+    embed.add_field(
+        name="زمان گذشته از آخرین Eruption",
+        value=f"{int(delta)} دقیقه",
+        inline=False
+    )
+
+    await channel.send(embed=embed)
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user}')
-    update_timer.start()
+    print(f"Logged in as {bot.user}")
+    simulate_eruption.start()
 
-@tasks.loop(seconds=60)
-async def update_timer():
-    global last_eruption, message_obj
-    now = datetime.utcnow()
-    minutes_passed = int((now - last_eruption).total_seconds() / 60)
-    next_eruption_in = eruption_interval.total_seconds() / 60 - minutes_passed
+async def main():
+    await bot.start(TOKEN)
 
-    status_text = get_status(minutes_passed)
-    embed = discord.Embed(
-        title="⏳ تایمر Eruption",
-        description=f"زمان گذشته از آخرین Eruption: **{minutes_passed} دقیقه**\n"
-                    f"وضعیت فارم: {status_text}\n"
-                    f"تا Eruption بعدی: {int(next_eruption_in)} دقیقه",
-        color=0x00ff00
-    )
-    embed.set_footer(text="Stalcraft Eruption Timer")
-
-    channel = bot.get_channel(CHANNEL_ID)
-    if channel is None:
-        print("چنل پیدا نشد")
-        return
-
-    if message_obj is None:
-        message_obj = await channel.send(embed=embed)
-    else:
-        try:
-            await message_obj.edit(embed=embed)
-        except:
-            message_obj = await channel.send(embed=embed)
-
-# شبیه‌سازی خودکار Eruption جدید برای تست
-@tasks.loop(seconds=eruption_interval.total_seconds())
-async def simulate_eruption():
-    global last_eruption
-    last_eruption = datetime.utcnow()
-
-simulate_eruption.start()
-bot.run(DISCORD_TOKEN)
+if __name__ == "__main__":
+    asyncio.run(main())
